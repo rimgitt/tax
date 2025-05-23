@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Расчет налога для самозанятого</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .form-group {
+            margin-top: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        .tax-rate {
+            margin-top: 10px;
+        }
+        .tax-rate-wrap-btn {
+            display: flex;
+        }
+        .tax-rate-btn {
+            position: relative;
+        }
+        .tax-rate-btn span {
+            padding: 10px 30px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            color: #ccc;
+            display: block;
+            float: left;
+        }
+        .tax-rate-btn input {
+            z-index: 1;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .tax-rate-btn input[type="radio"]:checked + span {
+            font-weight: bold!important;
+            border-color: #000!important;
+            color: #000!important;
+        }
+
+        .tax-rate>label {
+            margin-bottom: 10px;
+        }
+        .tax-rate label {
+            font-weight: normal;
+            margin-right: 20px;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            /* чтобы сохранять переносы строк */
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 style="font-size:30px;text-align:left;">Расчет налога для самозанятого</h1>
+
+    <form id="taxForm">
+
+        <div class="form-group">
+            <label for="amount">Введите сумму (₽):</label>
+            <input type="number" id="amount" min="0" step="0.01" required />
+        </div>
+
+        <div class="form-group tax-rate">
+            <label>Выберите размер налога:</label>
+            <div class="tax-rate-wrap-btn" style="display:flex;">
+                <label class="tax-rate-btn"><input type="radio" name="taxRate" value="4" checked /><span>4%</span></label>
+                <label class="tax-rate-btn"><input type="radio" name="taxRate" value="6" /><span>6%</span></label>
+            </div>
+        </div>
+
+        <button type="submit">Рассчитать</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        // Функция для преобразования числа в пропись
+        function numberToWords(num) {
+            const ones = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+            const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать',
+                'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+            const tens = ['', 'десять', 'двадцать', 'тридцать', 'сорок', 'пятьдесят',
+                'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+            const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста',
+                'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+
+            if (num === 0) return 'ноль';
+
+            let words = '';
+
+            // Обработка целой части
+            let integerPart = Math.floor(num);
+
+            // Обработка дробной части
+            let fractionalPart = Math.round((num - integerPart) * 100);
+
+            // Функция для обработки трехзначных чисел
+            function threeDigitToWords(n) {
+                let str = '';
+                if (n >= 100) {
+                    str += hundreds[Math.floor(n / 100)] + ' ';
+                    n %= 100;
+                }
+                if (n >= 10 && n <= 19) {
+                    str += teens[n - 10] + ' ';
+                } else if (n >= 20) {
+                    str += tens[Math.floor(n / 10)] + ' ';
+                    n %= 10;
+                }
+                if (n > 0 && n < 10) {
+                    str += ones[n] + ' ';
+                }
+                return str.trim();
+            }
+
+            // Обработка тысяч
+            if (integerPart >= 1000) {
+                let thousands = Math.floor(integerPart / 1000);
+                let lastTwo = thousands % 100;
+
+                // Для тысяч используем особую форму "тысяча", "тысячи", "тысяч"
+                let formWord = 'тысяч';
+                if (lastTwo >= 11 && lastTwo <= 14) formWord = 'тысяч';
+                else {
+                    const lastDigit = thousands % 10;
+                    if (lastDigit === 1) formWord = 'тысяча';
+                    else if (lastDigit >= 2 && lastDigit <= 4) formWord = 'тысячи';
+                }
+
+                words += threeDigitToWords(thousands) + ' ' + formWord + ' ';
+                integerPart %= 1000; // оставляем остаток
+            }
+
+            // Обработка оставшейся части
+            words += threeDigitToWords(integerPart);
+
+            // Определяем правильную форму слова "рубль"
+            const lastDigit = integerPart % 10;
+            const lastTwo = integerPart % 100;
+
+            let rubleForm = 'рублей';
+            if (!(lastTwo >= 11 && lastTwo <= 14)) {
+                if (lastDigit === 1) rubleForm = 'рубль';
+                else if (lastDigit >= 2 && lastDigit <= 4) rubleForm = 'рубля';
+            }
+
+            // Обработка копеек
+            let kopecksStr = '';
+            if (fractionalPart > 0) {
+                kopecksStr = numberToSmallWords(fractionalPart) + ' ' + (fractionalPart === 1 ? 'копейка' : 'копейки');
+            } else {
+                kopecksStr = '(без копеек)';
+            }
+
+            return (
+                words.trim() +
+                ' ' +
+                rubleForm +
+                (fractionalPart > 0 ? ', ' + kopecksStr : '')
+            );
+        }
+
+        // Вспомогательная функция для чисел до99 в пропись
+        function numberToSmallWords(n) {
+            const ones = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+            const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать',
+                'четырнадцать', 'пятнадцать', 'шестнадцать',
+                'семнадцать', 'восемнадцать', 'девятнадцать'];
+            const tens = ['', '', 'двадцать', 'тридцать', 'сорок',
+                'пятьдесят', 'шестьдесят',
+                'семьдесят', 'восемьдесят',
+                'девяносто'];
+
+            if (n === 0) return '';
+            if (n < 10) return ones[n];
+            if (n >= 10 && n < 20) return teens[n - 10];
+            const ten = Math.floor(n / 10);
+            const one = n % 10;
+
+            return tens[ten] + (one > 0 ? ' ' + ones[one] : '');
+        }
+
+        // Обработчик формы
+        document.getElementById('taxForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const amountInput = document.getElementById('amount');
+            const amount = parseFloat(amountInput.value);
+            const resultDiv = document.getElementById('result');
+
+            if (isNaN(amount)) {
+                resultDiv.textContent = 'Пожалуйста, введите корректную сумму.';
+                return;
+            }
+
+            // Получаем выбранный процент налога
+            const taxRateRadio = document.querySelector('input[name="taxRate"]:checked');
+            const taxPercent = parseFloat(taxRateRadio.value);
+
+            // Расчеты
+            const taxAmount = amount / (100 - taxPercent) * taxPercent;
+
+            // Форматируем суммы с двумя знаками после запятой
+            function formatSum(sum) {
+                return sum.toFixed(2).replace('.', ',') + ' ₽';
+            }
+
+            const sumStr = formatSum(amount);
+            const taxStr = formatSum(taxAmount);
+            const taxStrFormated = taxStr.toLocaleString('ru-RU', {
+                style: 'currency',
+                currency: 'RUB'
+            });
+            const totalSum = 
+                Math.round((amount + taxAmount) * 100) / 100; // итоговая сумма с налогом
+            const totalSumFormated = totalSum.toLocaleString('ru-RU', {
+                style: 'currency',
+                currency: 'RUB'
+            });
+            const totalStr = formatSum(totalSum);
+
+            // Получаем сумму прописью без копеек (можно расширить по желанию)
+            const sumInWords = numberToWords(amount);
+            const taxInWords = numberToWords(taxAmount);
+            const totalInWords = numberToWords(totalSum);
+
+            // Выводим результат
+            resultDiv.textContent =
+                `Сумма: ${sumStr}
+Размер налога (${taxPercent}%): ${taxStrFormated}
+Общая сумма с налогом: ${totalSumFormated}
+Общая сумма с налогом прописью:
+${totalInWords.charAt(0).toUpperCase() + totalInWords.slice(1)}`
+        });
+    </script>
+
+</body>
+
+</html>
